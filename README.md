@@ -3,4 +3,4 @@
 <h1>Jelly</h1>
 <p>This is jelly that everyone like :D</p>
 <p>I have some shapes of jellys, until i feel confused which one i choose @_@</p>
-<img src="/jelly-pictures/1024.jpg"/>
+<img src="./jelly-pictures/1024.jpg"/>
