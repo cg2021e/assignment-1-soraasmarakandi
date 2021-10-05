@@ -401,7 +401,6 @@ function main() {
     0.9045811830256,0.6438360123061,0.180392, 0.086275, 0.074509, //370
 
   ];
-
   // Buat buffer untuk LinkedList tempat penyimpanan sementara sebelum titik digambar
   var buffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
@@ -414,7 +413,7 @@ function main() {
     varying vec3 vColor;
     uniform mat4 uChanged;
     void main(){
-        gl_Position = uChanged * vec4(aPosition, 0.0, 1.0);
+        gl_Position = vec4(aPosition, 0.0, 1.0)*uChanged;
         vColor = aColor;
     }
   `;
@@ -471,9 +470,11 @@ function main() {
   gl.enableVertexAttribArray(aColor);
 
   //Waktunya NGGAMBARR
-  var speed = 0.0231;
+  var speed = 0.0017;
   var change = 0;
   var uChange = gl.getUniformLocation(shaderProgram, "uChanged");
+
+  
   function render() {
     // change += 1;
     // gl.uniform1f(uChange, change);
@@ -481,25 +482,27 @@ function main() {
     // gl.clear(gl.COLOR_BUFFER_BIT);
 
     // gl.drawArrays(gl.TRIANGLE_FAN, 0, 4);
-    if (change >= 0.1 || change < -1.15) speed = -speed;
+    if (change >= 0.5 || change < -0.5) speed = -speed;
     change += speed;
+
     const kiri = [
       1, 0, 0, 0,
       0, 1, 0, 0,
       0, 0, 1, 0,
       0, 0, 0, 1,
     ]
-
+  
     const kanan = [
       1, 0, 0, 0,
       0, 1, 0, 0,
       0, 0, 1, 0,
       0, change, 0, 1,
     ]
+  
 
-    gl.clearColor(0.729, 0.662, 0.470, 1.0);
+    gl.clearColor(0.0, 0.1, 0.15, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT);
-
+    
     gl.uniformMatrix4fv(uChange, false, kiri);
     gl.drawArrays(gl.TRIANGLE_FAN, 58, 24);//paling bawah bawah
     gl.drawArrays(gl.TRIANGLE_FAN, 158, 33);//paling bawah atas
@@ -515,7 +518,9 @@ function main() {
     gl.drawArrays(gl.TRIANGLE_FAN, 255,40);//atas
     gl.drawArrays(gl.TRIANGLE_FAN, 220,35);//jeglongan
     gl.drawArrays(gl.TRIANGLE_FAN, 191,29);//atas
-    requestAnimationFrame(render);
+
   }
-  requestAnimationFrame(render);
+  setInterval(render, 1000 / 60);
 }
+
+//S=(-0.8261093572788,-0.3325678453863)
