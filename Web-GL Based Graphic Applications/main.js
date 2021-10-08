@@ -749,7 +749,6 @@ function main() {
   gl.validateProgram(shaderProgram);
   gl.useProgram(shaderProgram);
 
-  //Dapatkan lokasi positon dari shader untuk diolah
   gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
   var aPosition = gl.getAttribLocation(shaderProgram, "aPosition");
   gl.vertexAttribPointer(aPosition, 2, gl.FLOAT, gl.FALSE, 5 * Float32Array.BYTES_PER_ELEMENT, 0);
@@ -759,18 +758,11 @@ function main() {
   gl.vertexAttribPointer(aColor, 3, gl.FLOAT, gl.FALSE, 5 * Float32Array.BYTES_PER_ELEMENT, 2 * Float32Array.BYTES_PER_ELEMENT);
   gl.enableVertexAttribArray(aColor);
 
-  //Waktunya NGGAMBARR
-  var speed = 0.0017;
+  var speed = 0.017;
   var change = 0;
   var uChange = gl.getUniformLocation(shaderProgram, "uChanged");
   function render() {
-    // change += 1;
-    // gl.uniform1f(uChange, change);
-    // gl.clearColor(1.0, 1.0, 1.0, 1.0); //Kasih BackGround dengan putih
-    // gl.clear(gl.COLOR_BUFFER_BIT);
-
-    // gl.drawArrays(gl.TRIANGLE_FAN, 0, 4);
-    if (change >= 0.1 || change < -1.15) speed = -speed;
+    if (change >= 0.27 || change < -1.05) speed = -speed;
     change += speed;
     const kiri = [
       1, 0, 0, 0,
@@ -790,21 +782,21 @@ function main() {
     gl.clear(gl.COLOR_BUFFER_BIT);
 
     gl.uniformMatrix4fv(uChange, false, kiri);
-    gl.drawArrays(gl.TRIANGLE_FAN, 58, 24);//paling bawah bawah
-    gl.drawArrays(gl.TRIANGLE_FAN, 158, 33);//paling bawah atas
-    gl.drawArrays(gl.TRIANGLE_FAN, 150, 8);//bayangan paling bawah
-    gl.drawArrays(gl.TRIANGLE_FAN, 29, 29);//tengah
-    gl.drawArrays(gl.TRIANGLE_FAN, 0, 29);//tepi atas
-    gl.drawArrays(gl.TRIANGLE_FAN, 82, 35);//jeglongan
-    gl.drawArrays(gl.TRIANGLE_FAN, 117, 33);//atas
+    gl.drawArrays(gl.TRIANGLE_FAN, 58, 24);
+    gl.drawArrays(gl.TRIANGLE_FAN, 158, 33);
+    gl.drawArrays(gl.TRIANGLE_FAN, 150, 8);
+    gl.drawArrays(gl.TRIANGLE_FAN, 29, 29);
+    gl.drawArrays(gl.TRIANGLE_FAN, 0, 29);
+    gl.drawArrays(gl.TRIANGLE_FAN, 82, 35);
+    gl.drawArrays(gl.TRIANGLE_FAN, 117, 33);
 
     gl.uniformMatrix4fv(uChange, false, kanan);
-    gl.drawArrays(gl.TRIANGLE_FAN, 501,158);//atas
-    gl.drawArrays(gl.TRIANGLE_FAN, 451,50);//atas
-    gl.drawArrays(gl.TRIANGLE_FAN, 408,43);//atas
-    gl.drawArrays(gl.TRIANGLE_FAN, 339,69);//atas
-    gl.drawArrays(gl.TRIANGLE_FAN, 255,84);//jeglongan
-    gl.drawArrays(gl.TRIANGLE_FAN, 191,64);//atas
+    gl.drawArrays(gl.TRIANGLE_FAN, 501,158);
+    gl.drawArrays(gl.TRIANGLE_FAN, 451,50);
+    gl.drawArrays(gl.TRIANGLE_FAN, 408,43);
+    gl.drawArrays(gl.TRIANGLE_FAN, 339,69);
+    gl.drawArrays(gl.TRIANGLE_FAN, 255,84);
+    gl.drawArrays(gl.TRIANGLE_FAN, 191,64);
     requestAnimationFrame(render);
   }
   requestAnimationFrame(render);
