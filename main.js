@@ -29,6 +29,8 @@ function main() {
         varying vec3 vPosition;
         uniform vec3 uLightConstant;        // It represents the light color
         uniform float uAmbientIntensity;    // It represents the light intensity
+        uniform vec3 diffuseColor;
+        uniform vec3 specularColor;
         // uniform vec3 uLightDirection;
         uniform vec3 uLightPosition;
         uniform mat3 uNormalModel;
@@ -6657,6 +6659,8 @@ function main() {
     var uLightPosition;
     var uNormalModel;
     var uViewerPosition;
+    var uDefuse;
+    var uSpecular;
 
     function create_program(){
             // Create .c in GPU
@@ -6749,11 +6753,23 @@ function main() {
         gl.uniform3fv(uLightConstant, [1.0, 0.5, 1.0]);   // orange light
         gl.uniform1f(uAmbientIntensity, 0.4) // light intensity: 40%
         uLightPosition = gl.getUniformLocation(shaderProgram, "uLightPosition");
-        gl.uniform3fv(uLightPosition, [1.0, 1.0, 1.0]);
+        gl.uniform3fv(uLightPosition, [1.00, 1.00, 1.00]);
         uNormalModel = gl.getUniformLocation(shaderProgram, "uNormalModel");
         uViewerPosition = gl.getUniformLocation(shaderProgram, "uViewerPosition");
         gl.uniform3fv(uViewerPosition, camera);
     }
+
+    var controllable = false;
+    function changeControl() {
+        controllable = !controllable;
+    }
+
+    function onKeyDown(event) {
+        if (event.key == 'space')
+            changeControl();
+    }
+
+    var cubePosition;
 
     function render() {
             gl.enable(gl.DEPTH_TEST);
@@ -6798,24 +6814,16 @@ function main() {
 
             prepare_plane();
             create_program();
-            var model4 = glMatrix.mat4.create();
-            glMatrix.mat4.rotate(model4, model4, -1, [1, 0, 0]);
-            glMatrix.mat4.rotate(model4, model4, 0, [0, 1, 0]);
-            glMatrix.mat4.translate(model4, model4, [-3, 0, 0]);
-            gl.uniformMatrix4fv(uModel, false, model4);
-            var normalModel4 = glMatrix.mat3.create();
-            glMatrix.mat3.normalFromMat4(normalModel4, model4);
-            gl.uniformMatrix3fv(uNormalModel, false, normalModel4);
-            gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
             
-            var model2 = glMatrix.mat4.create();
-            glMatrix.mat4.rotate(model2, model2, 0, [1, 0, 0]);
-            glMatrix.mat4.rotate(model2, model2, 0, [0, 1, 0]);
-            glMatrix.mat4.translate(model2, model2, [3, 0, 0]);
-            gl.uniformMatrix4fv(uModel, false, model2);
-            var normalModel2 = glMatrix.mat3.create();
-            glMatrix.mat3.normalFromMat4(normalModel2, model2);
-            gl.uniformMatrix3fv(uNormalModel, false, normalModel2);
+            var model5 = glMatrix.mat4.create();
+            glMatrix.mat4.rotate(model5, model5, 0, [1, 0, 0]);
+            glMatrix.mat4.rotate(model5, model5, 0, [0, 1, 0]);
+            glMatrix.mat4.translate(model5, model5, [0, 0, -2]);
+            glMatrix.mat4.scale(model5, model5, [20, 20, 1]);
+            gl.uniformMatrix4fv(uModel, false, model5);
+            var normalModel5 = glMatrix.mat3.create();
+            glMatrix.mat3.normalFromMat4(normalModel5, model5);
+            gl.uniformMatrix3fv(uNormalModel, false, normalModel5);
             gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
 
     }
