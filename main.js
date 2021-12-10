@@ -4,8 +4,67 @@ function main() {
     var gl = canvas.getContext('webgl');                // The brush and the paints
 
     // Define vertices data consisting of position and color properties
+    var vertexShaderSource = `
+        attribute vec3 aPosition;
+        attribute vec3 aColor;
+        attribute vec3 aNormal;
+        varying vec3 vColor;
+        varying vec3 vNormal;
+        varying vec3 vPosition;
+        uniform mat4 uModel;
+        uniform mat4 uView;
+        uniform mat4 uProjection;
+        void main() {
+            gl_Position = uProjection * uView * uModel * (vec4(aPosition * 2. / 3., 1.));
+            vColor = aColor;
+            vNormal = aNormal;
+            vPosition = (uModel * (vec4(aPosition * 2. / 3., 1.))).xyz;
+        }
+    `;
 
-    var vertices = [
+    var fragmentShaderSource = `
+        precision mediump float;
+        varying vec3 vColor;
+        varying vec3 vNormal;
+        varying vec3 vPosition;
+        uniform vec3 uLightConstant;        // It represents the light color
+        uniform float uAmbientIntensity;    // It represents the light intensity
+        // uniform vec3 uLightDirection;
+        uniform vec3 uLightPosition;
+        uniform mat3 uNormalModel;
+        uniform vec3 uViewerPosition;
+        void main() {
+            vec3 ambient = uLightConstant * uAmbientIntensity;
+            // vec3 lightDirection = uLightDirection;
+            vec3 lightDirection = uLightPosition - vPosition;
+            vec3 normalizedLight = normalize(lightDirection);  // [2., 0., 0.] becomes a unit vector [1., 0., 0.]
+            vec3 normalizedNormal = normalize(uNormalModel * vNormal);
+            float cosTheta = dot(normalizedNormal, normalizedLight);
+            vec3 diffuse = vec3(0., 0., 0.);
+            if (cosTheta > 0.) {
+                float diffuseIntensity = cosTheta;
+                diffuse = uLightConstant * diffuseIntensity;
+            }
+            vec3 reflector = reflect(-lightDirection, normalizedNormal);
+            vec3 normalizedReflector = normalize(reflector);
+            vec3 normalizedViewer = normalize(uViewerPosition - vPosition);
+            float cosPhi = dot(normalizedReflector, normalizedViewer);
+            vec3 specular = vec3(0., 0., 0.);
+            if (cosPhi > 0.) {
+                float shininessConstant = 100.0; 
+                float specularIntensity = pow(cosPhi, shininessConstant); 
+                specular = uLightConstant * specularIntensity;
+            }
+            vec3 phong = ambient + diffuse + specular;
+            gl_FragColor = vec4(phong * vColor, 1.);
+        }
+    `;
+    var vertices;
+    var indices;
+    var vertexBuffer;
+    var indexBuffer;
+    function prepare_jelly() {
+        vertices = [
         -0.938798,    0.344467,    0.528908,  0.239216, 0.137255, 0.12549,    -0.000000,   0.000000,    -1.000000, 
         -0.451900,    0.892069,    0.528908,  0.239216, 0.137255, 0.12549,    -0.000000,   0.000000,    -1.000000,
         0.533449 ,   0.845832,     0.528908,  0.239216, 0.137255, 0.12549,    -0.000000,   0.000000,    -1.000000,
@@ -4154,40 +4213,7 @@ function main() {
         0.600698 ,   0.644507,     0.655637,  0.239216, 0.137255, 0.12549,    0.250095,    0.244299,    0.936894,
     ];
 
-    var cube_vertices = [
-        // Face A       // Texture Coordinate   // Surface orientation (normal vector)
-        -1, -1, -1,     0,0,                    0, 0, -1,   // Index:  0    
-         1, -1, -1,     1,0,                    0, 0, -1,   // Index:  1
-         1,  1, -1,     1,1,                    0, 0, -1,   // Index:  2
-        -1,  1, -1,     0,1,                    0, 0, -1,   // Index:  3
-        // Face B       // Yellow
-        -1, -1,  1,     0,0,                    0, 0, 1,    // Index:  4
-         1, -1,  1,     1,0,                    0, 0, 1,    // Index:  5
-         1,  1,  1,     1,1,                    0, 0, 1,    // Index:  6
-        -1,  1,  1,     0,1,                    0, 0, 1,    // Index:  7
-        // Face C       // Green
-        -1, -1, -1,     0,0,                    -1, 0, 0,   // Index:  8
-        -1,  1, -1,     1,0,                    -1, 0, 0,   // Index:  9
-        -1,  1,  1,     1,1,                    -1, 0, 0,   // Index: 10
-        -1, -1,  1,     0,1,                    -1, 0, 0,   // Index: 11
-        // Face D       // Blue
-         1, -1, -1,     0,0,                    1, 0, 0,    // Index: 12
-         1,  1, -1,     1,0,                    1, 0, 0,    // Index: 13
-         1,  1,  1,     1,1,                    1, 0, 0,    // Index: 14
-         1, -1,  1,     0,1,                    1, 0, 0,    // Index: 15
-        // Face E       // Orange
-        -1, -1, -1,     0,0,                    0, -1, 0,   // Index: 16
-        -1, -1,  1,     0,1,                    0, -1, 0,   // Index: 17
-         1, -1,  1,     1,1,                    0, -1, 0,   // Index: 18
-         1, -1, -1,     1,0,                    0, -1, 0,   // Index: 19
-        // Face F       // White
-        -1,  1, -1,     0,0,                    0, 1, 0,    // Index: 20
-        -1,  1,  1,     0,1,                    0, 1, 0,    // Index: 21
-         1,  1,  1,     1,1,                    0, 1, 0,    // Index: 22
-         1,  1, -1,     1,0,                    0, 1, 0     // Index: 23
-    ];
-
-    var indices = [
+    indices = [
         0, 1, 2,
         3, 4, 5,
         6, 7, 8,
@@ -6527,392 +6553,271 @@ function main() {
         4141, 4142, 4143,
         2624, 4144, 2625,
         2627, 4145, 2628,
-];
-
-    var cube_indices = [
-        0, 1, 2,     0, 2, 3,     // Face A
-        4, 5, 6,     4, 6, 7,     // Face B
-        8, 9, 10,    8, 10, 11,   // Face C
-        12, 13, 14,  12, 14, 15,  // Face D
-        16, 17, 18,  16, 18, 19,  // Face E
-        20, 21, 22,  20, 22, 23,  // Face F
     ];
+        // Create a linked-list for storing the vertices data
+        vertexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
 
-    // Create a linked-list for storing the vertices data
-    var vertexBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+        // Create a linked-list for storing the indices data
+        indexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+    }
 
-    // Create a linked-list for storing the indices data
-    var indexBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+    function prepare_cube() {
+        vertices = [
+            -1.000000 , 1.000000, 1.000000, 1.00, 1.00, 1.00, 0.000000, 0.000000, 1.000000,  
+            1.000000, -1.000000, 1.000000, 1.00, 1.00, 1.00, 0.000000, 0.000000, 1.000000, 
+            1.000000, 1.000000, 1.000000, 1.00, 1.00, 1.00, 0.000000, 0.000000, 1.000000, 
+            1.000000, -1.000000, 1.000000, 1.00, 1.00, 1.00, 0.000000, -1.000000, 0.000000, 
+            -1.000000, -1.000000, -1.000000, 1.00, 1.00, 1.00, 0.000000, -1.000000, 0.000000, 
+            1.000000, -1.000000, -1.000000, 1.00, 1.00, 1.00, 0.000000, -1.000000, 0.000000, 
+            -1.000000, -1.000000, 1.000000, 1.00, 1.00, 1.00, 1.000000, 0.000000, 0.000000, 
+            -1.000000, 1.000000, -1.000000, 1.00, 1.00, 1.00, 1.000000, 0.000000, 0.000000, 
+            -1.000000, -1.000000, -1.000000, 1.00, 1.00, 1.00, 1.000000, 0.000000, 0.000000, 
+            1.000000, 1.000000, -1.000000, 1.00, 1.00, 1.00, 0.000000, 0.000000, -1.000000, 
+            -1.000000, -1.000000, -1.000000, 1.00, 1.00, 1.00, 0.000000, 0.000000, -1.000000, 
+            -1.000000, 1.000000, -1.000000, 1.00, 1.00, 1.00, 0.000000, 0.000000, -1.000000, 
+            1.000000, 1.000000, 1.000000, 1.00, 1.00, 1.00, 1.000000, 0.000000, -0.000000, 
+            1.000000, -1.000000, -1.000000, 1.00, 1.00, 1.00, 1.000000, 0.000000, -0.000000, 
+            1.000000, 1.000000, -1.000000, 1.00, 1.00, 1.00, 1.000000, 0.000000, -0.000000, 
+            -1.000000, 1.000000, 1.000000, 1.00, 1.00, 1.00, 0.000000, 1.000000, -0.000000, 
+            1.000000, 1.000000, -1.000000, 1.00, 1.00, 1.00, 0.000000, 1.000000, -0.000000, 
+            -1.000000, 1.000000, -1.000000, 1.00, 1.00, 1.00, 0.000000, 1.000000, -0.000000, 
+            -1.000000, -1.000000, 1.000000, 1.00, 1.00, 1.00, 0.000000, -0.000000, 1.000000, 
+            -1.000000, -1.000000, 1.000000, 1.00, 1.00, 1.00, 0.000000, -1.000000, 0.000000, 
+            -1.000000, 1.000000, 1.000000, 1.00, 1.00, 1.00, 1.000000, 0.000000, 0.000000, 
+            1.000000, -1.000000, -1.000000, 1.00, 1.00, 1.00, 0.000000, 0.000000, -1.000000, 
+            1.000000, -1.000000, 1.000000, 1.00, 1.00, 1.00, 1.000000, 0.000000, 0.000000, 
+            1.000000, 1.000000, 1.000000, 1.00, 1.00, 1.00, 0.000000, 1.000000, -0.000000, 
+        ];
+    
+        indices = [
+            0, 1, 2,
+            3, 4, 5,
+            6, 7, 8,
+            9, 10, 11,
+            12, 13, 14,
+            15, 16, 17,
+            0, 18, 1,
+            3, 19, 4,
+            6, 20, 7,
+            9, 21, 10,
+            12, 22, 13,
+            15, 23, 16,   
+        ];
+        // Create a linked-list for storing the vertices data
+        vertexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
 
-    var vertexShaderSource = `
-        attribute vec3 aPosition;
-        attribute vec3 aColor;
-        attribute vec3 aNormal;
-        varying vec3 vColor;
-        varying vec3 vNormal;
-        varying vec3 vPosition;
-        uniform mat4 uModel;
-        uniform mat4 uView;
-        uniform mat4 uProjection;
-        void main() {
-            gl_Position = uProjection * uView * uModel * (vec4(aPosition * 2. / 3., 1.));
-            vColor = aColor;
-            vNormal = aNormal;
-            vPosition = (uModel * (vec4(aPosition * 2. / 3., 1.))).xyz;
-        }
-    `;
+        // Create a linked-list for storing the indices data
+        indexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+    }
 
-    var fragmentShaderSource = `
-        precision mediump float;
-        varying vec3 vColor;
-        varying vec3 vNormal;
-        varying vec3 vPosition;
-        uniform vec3 uLightConstant;        // It represents the light color
-        uniform float uAmbientIntensity;    // It represents the light intensity
-        // uniform vec3 uLightDirection;
-        uniform vec3 uLightPosition;
-        uniform mat3 uNormalModel;
-        uniform vec3 uViewerPosition;
-        void main() {
-            vec3 ambient = uLightConstant * uAmbientIntensity;
-            // vec3 lightDirection = uLightDirection;
-            vec3 lightDirection = uLightPosition - vPosition;
-            vec3 normalizedLight = normalize(lightDirection);  // [2., 0., 0.] becomes a unit vector [1., 0., 0.]
-            vec3 normalizedNormal = normalize(uNormalModel * vNormal);
-            float cosTheta = dot(normalizedNormal, normalizedLight);
-            vec3 diffuse = vec3(0., 0., 0.);
-            if (cosTheta > 0.) {
-                float diffuseIntensity = cosTheta;
-                diffuse = uLightConstant * diffuseIntensity;
-            }
-            vec3 reflector = reflect(-lightDirection, normalizedNormal);
-            vec3 normalizedReflector = normalize(reflector);
-            vec3 normalizedViewer = normalize(uViewerPosition - vPosition);
-            float cosPhi = dot(normalizedReflector, normalizedViewer);
-            vec3 specular = vec3(0., 0., 0.);
-            if (cosPhi > 0.) {
-                float shininessConstant = 100.0; 
-                float specularIntensity = pow(cosPhi, shininessConstant); 
-                specular = uLightConstant * specularIntensity;
-            }
-            vec3 phong = ambient + diffuse + specular;
-            gl_FragColor = vec4(phong * vColor, 1.);
-        }
-    `;
+    function prepare_plane(){
+        vertices = [
+        1.000000, -1.000000, 0.000000, 0.003922, 0.439216, 0.090196, -0.000000, 0.000000, 1.000000,
+        -1.000000, 1.000000, 0.000000, 0.003922, 0.439216, 0.090196, -0.000000, 0.000000, 1.000000,
+        -1.000000, -1.000000, 0.000000, 0.003922, 0.439216, 0.090196, -0.000000, 0.000000, 1.000000,
+        1.000000, 1.000000, 0.000000, 0.003922, 0.439216, 0.090196, -0.000000, 0.000000, 1.000000,
+        ]
 
-    // Create .c in GPU
-    var vertexShader = gl.createShader(gl.VERTEX_SHADER);
-    gl.shaderSource(vertexShader, vertexShaderSource);
-    var fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-    gl.shaderSource(fragmentShader, fragmentShaderSource);
+        indices = [
+            0, 1, 2,
+            0, 3, 1,
+        ]
+        vertexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
 
-    // Compile .c into .o
-    gl.compileShader(vertexShader);
-    gl.compileShader(fragmentShader);
+        // Create a linked-list for storing the indices data
+        indexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+    }
 
-    // Prepare a .exe shell (shader program)
-    var shaderProgram = gl.createProgram();
+    var uModel;
+    var uView;
+    var uProjection;
+    var vertexShader;
+    var fragmentShader;
+    var shaderProgram;
+    var aPosition;
+    var aColor;
+    var aNormal;
+    var projection;
+    var view;
+    var camera;
+    var uLightConstant;
+    var uAmbientIntensity;
+    var uLightPosition;
+    var uNormalModel;
+    var uViewerPosition;
 
-    // Put the two .o files into the shell
-    gl.attachShader(shaderProgram, vertexShader);
-    gl.attachShader(shaderProgram, fragmentShader);
+    function create_program(){
+            // Create .c in GPU
+        vertexShader = gl.createShader(gl.VERTEX_SHADER);
+        gl.shaderSource(vertexShader, vertexShaderSource);
+        fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+        gl.shaderSource(fragmentShader, fragmentShaderSource);
 
-    // Link the two .o files, so together they can be a runnable program/context.
-    gl.linkProgram(shaderProgram);
+        // Compile .c into .o
+        gl.compileShader(vertexShader);
+        gl.compileShader(fragmentShader);
 
-    // Start using the context (analogy: start using the paints and the brushes)
-    gl.useProgram(shaderProgram);
+        // Prepare a .exe shell (shader program)
+        shaderProgram = gl.createProgram();
 
-    // Teach the computer how to collect
-    //  the positional values from ARRAY_BUFFER
-    //  to each vertex being processed
-    var aPosition = gl.getAttribLocation(shaderProgram, "aPosition");
-    gl.vertexAttribPointer(
-        aPosition, 
-        3, 
-        gl.FLOAT, 
-        false, 
-        9 * Float32Array.BYTES_PER_ELEMENT, 
-        0
-    );
-    gl.enableVertexAttribArray(aPosition);
-    var aColor = gl.getAttribLocation(shaderProgram, "aColor");
-    gl.vertexAttribPointer(
-        aColor, 
-        3, 
-        gl.FLOAT, 
-        false, 
-        9 * Float32Array.BYTES_PER_ELEMENT, 
-        3 * Float32Array.BYTES_PER_ELEMENT
-    );
-    gl.enableVertexAttribArray(aColor);
-    var aNormal = gl.getAttribLocation(shaderProgram, "aNormal");
-    gl.vertexAttribPointer(
-        aNormal, 
-        3, 
-        gl.FLOAT, 
-        false, 
-        9 * Float32Array.BYTES_PER_ELEMENT, 
-        6 * Float32Array.BYTES_PER_ELEMENT
-    );
-    gl.enableVertexAttribArray(aNormal);
+        // Put the two .o files into the shell
+        gl.attachShader(shaderProgram, vertexShader);
+        gl.attachShader(shaderProgram, fragmentShader);
 
-    // Connect the uniform transformation matrices
-    var uModel = gl.getUniformLocation(shaderProgram, "uModel");
-    var uView = gl.getUniformLocation(shaderProgram, "uView");
-    var uProjection = gl.getUniformLocation(shaderProgram, "uProjection");
+        // Link the two .o files, so together they can be a runnable program/context.
+        gl.linkProgram(shaderProgram);
 
-    // Set the projection matrix in the vertex shader
-    var projection = glMatrix.mat4.create();
-    glMatrix.mat4.perspective(
-        projection,
-        Math.PI / 3,    // field of view
-        1,              // ratio
-        0.5,            // near clip
-        10              // far clip
-    );
-    gl.uniformMatrix4fv(uProjection, false, projection);
+        // Start using the context (analogy: start using the paints and the brushes)
+        gl.useProgram(shaderProgram);
 
-    // Set the view matrix in the vertex shader
-    var view = glMatrix.mat4.create();
-    var camera = [0, 0, 4];
-    glMatrix.mat4.lookAt(
-        view,
-        camera,      // camera position
-        [0, 0, 0],      // the point where camera looks at
-        [0, 1, 0]       // up vector of the camera
-    );
-    gl.uniformMatrix4fv(uView, false, view);
+        // Teach the computer how to collect
+        //  the positional values from ARRAY_BUFFER
+        //  to each vertex being processed
+        aPosition = gl.getAttribLocation(shaderProgram, "aPosition");
+        gl.vertexAttribPointer(
+            aPosition, 
+            3, 
+            gl.FLOAT, 
+            false, 
+            9 * Float32Array.BYTES_PER_ELEMENT, 
+            0
+        );
+        gl.enableVertexAttribArray(aPosition);
+        aColor = gl.getAttribLocation(shaderProgram, "aColor");
+        gl.vertexAttribPointer(
+            aColor, 
+            3, 
+            gl.FLOAT, 
+            false, 
+            9 * Float32Array.BYTES_PER_ELEMENT, 
+            3 * Float32Array.BYTES_PER_ELEMENT
+        );
+        gl.enableVertexAttribArray(aColor);
+        aNormal = gl.getAttribLocation(shaderProgram, "aNormal");
+        gl.vertexAttribPointer(
+            aNormal, 
+            3, 
+            gl.FLOAT, 
+            false, 
+            9 * Float32Array.BYTES_PER_ELEMENT, 
+            6 * Float32Array.BYTES_PER_ELEMENT
+        );
+        gl.enableVertexAttribArray(aNormal);
 
-    // Define the lighting and shading
-    var uLightConstant = gl.getUniformLocation(shaderProgram, "uLightConstant");
-    var uAmbientIntensity = gl.getUniformLocation(shaderProgram, "uAmbientIntensity");
-    gl.uniform3fv(uLightConstant, [1.0, 0.5, 1.0]);   // orange light
-    gl.uniform1f(uAmbientIntensity, 0.4) // light intensity: 40%
-    // var uLightDirection = gl.getUniformLocation(shaderProgram, "uLightDirection");
-    // gl.uniform3fv(uLightDirection, [2.0, 0.0, 0.0]);    // light comes from the right side
-    var uLightPosition = gl.getUniformLocation(shaderProgram, "uLightPosition");
-    gl.uniform3fv(uLightPosition, [1.0, 1.0, 1.0]);
-    var uNormalModel = gl.getUniformLocation(shaderProgram, "uNormalModel");
-    var uViewerPosition = gl.getUniformLocation(shaderProgram, "uViewerPosition");
-    gl.uniform3fv(uViewerPosition, camera);
+        // Connect the uniform transformation matrices
+        uModel = gl.getUniformLocation(shaderProgram, "uModel");
+        uView = gl.getUniformLocation(shaderProgram, "uView");
+        uProjection = gl.getUniformLocation(shaderProgram, "uProjection");
 
-    // var speed = [3/600, 2/600, 0];
-    // var change = [-0.5, 0, 0];
+        // Set the projection matrix in the vertex shader
+        projection = glMatrix.mat4.create();
+        glMatrix.mat4.perspective(
+            projection,
+            Math.PI / 3,    // field of view
+            1,              // ratio
+            0.5,            // near clip
+            10              // far clip
+        );
+        gl.uniformMatrix4fv(uProjection, false, projection);
+
+        // Set the view matrix in the vertex shader
+        view = glMatrix.mat4.create();
+        camera = [0, 0, 7];
+        glMatrix.mat4.lookAt(
+            view,
+            camera,      // camera position
+            [0, 0, 0],      // the point where camera looks at
+            [0, 1, 0]       // up vector of the camera
+        );
+        gl.uniformMatrix4fv(uView, false, view);
+
+        // Define the lighting and shading
+        uLightConstant = gl.getUniformLocation(shaderProgram, "uLightConstant");
+        uAmbientIntensity = gl.getUniformLocation(shaderProgram, "uAmbientIntensity");
+        gl.uniform3fv(uLightConstant, [1.0, 0.5, 1.0]);   // orange light
+        gl.uniform1f(uAmbientIntensity, 0.4) // light intensity: 40%
+        uLightPosition = gl.getUniformLocation(shaderProgram, "uLightPosition");
+        gl.uniform3fv(uLightPosition, [1.0, 1.0, 1.0]);
+        uNormalModel = gl.getUniformLocation(shaderProgram, "uNormalModel");
+        uViewerPosition = gl.getUniformLocation(shaderProgram, "uViewerPosition");
+        gl.uniform3fv(uViewerPosition, camera);
+    }
 
     function render() {
-            // if (change[0] >= 0.5 || change[0] <= -0.5) speed[0] = -speed[0];
-            // if (change[1] >= 0.5 || change[1] <= -0.5) speed[1] = -speed[1];
-            // change[0] = change[0] + speed[0];
-            // change[1] = change[1] + speed[1];
-
-
-            // Init the model matrix
-            var model = glMatrix.mat4.create();
-
-
-            // Define a rotation matrix about x axis and store it to the model matrix
-            // Define a rotation matrix about y axis and store it to the model matrix
-            // Define a translation matrix and store it to the model matrix
-            // Set the model matrix in the vertex shader
-            // Set the model matrix for normal vector
-            glMatrix.mat4.rotate(model, model, -1, [1, 0, 0]);
-            glMatrix.mat4.rotate(model, model, 0, [0, 1, 0]);
-            glMatrix.mat4.translate(model, model, [-1, 0, 0]);
-            gl.uniformMatrix4fv(uModel, false, model);
-            var normalModel = glMatrix.mat3.create();
-
-            
-            glMatrix.mat3.normalFromMat4(normalModel, model);
-            gl.uniformMatrix3fv(uNormalModel, false, normalModel);
-
-
-            // Reset the frame buffer
             gl.enable(gl.DEPTH_TEST);
             gl.clearColor(0.1, 0.1, 0.1, 1.0);
             gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+            prepare_jelly();
+            create_program();
+            // Init the model matrix
+            var model = glMatrix.mat4.create();
+            glMatrix.mat4.rotate(model, model, -1, [1, 0, 0]);
+            glMatrix.mat4.rotate(model, model, 0, [0, 1, 0]);
+            glMatrix.mat4.translate(model, model, [-3, 0, 0]);
+            gl.uniformMatrix4fv(uModel, false, model);
+            var normalModel = glMatrix.mat3.create();
+            glMatrix.mat3.normalFromMat4(normalModel, model);
+            gl.uniformMatrix3fv(uNormalModel, false, normalModel);
             gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
-
-
-
-
-
-
 
             // Init the model matrix
             var model2 = glMatrix.mat4.create();
-
-
-            // Define a rotation matrix about x axis and store it to the model matrix
-            // Define a rotation matrix about y axis and store it to the model matrix
-            // Define a translation matrix and store it to the model matrix
-            // Set the model matrix in the vertex shader
-            // Set the model matrix for normal vector
             glMatrix.mat4.rotate(model2, model2, 0, [1, 0, 0]);
             glMatrix.mat4.rotate(model2, model2, 0, [0, 1, 0]);
-            glMatrix.mat4.translate(model2, model2, [1, 0, 0]);
+            glMatrix.mat4.translate(model2, model2, [3, 0, 0]);
             gl.uniformMatrix4fv(uModel, false, model2);
             var normalModel2 = glMatrix.mat3.create();
-
-            
             glMatrix.mat3.normalFromMat4(normalModel2, model2);
             gl.uniformMatrix3fv(uNormalModel, false, normalModel2);
             gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
 
-            ////////////////CUBE(Masih Gagal)/////////////////////////
-            var cube_vertices = [
-                // Face A       // Red
-                -1, -1, -1,     1, 0, 0,    // Index:  0    
-                 1, -1, -1,     1, 0, 0,    // Index:  1
-                 1,  1, -1,     1, 0, 0,    // Index:  2
-                -1,  1, -1,     1, 0, 0,    // Index:  3
-                // Face B       // Yellow
-                -1, -1,  1,     1, 1, 0,    // Index:  4
-                 1, -1,  1,     1, 1, 0,    // Index:  5
-                 1,  1,  1,     1, 1, 0,    // Index:  6
-                -1,  1,  1,     1, 1, 0,    // Index:  7
-                // Face C       // Green
-                -1, -1, -1,     0, 1, 0,    // Index:  8
-                -1,  1, -1,     0, 1, 0,    // Index:  9
-                -1,  1,  1,     0, 1, 0,    // Index: 10
-                -1, -1,  1,     0, 1, 0,    // Index: 11
-                // Face D       // Blue
-                 1, -1, -1,     0, 0, 1,    // Index: 12
-                 1,  1, -1,     0, 0, 1,    // Index: 13
-                 1,  1,  1,     0, 0, 1,    // Index: 14
-                 1, -1,  1,     0, 0, 1,    // Index: 15
-                // Face E       // Orange
-                -1, -1, -1,     1, 0.5, 0,  // Index: 16
-                -1, -1,  1,     1, 0.5, 0,  // Index: 17
-                 1, -1,  1,     1, 0.5, 0,  // Index: 18
-                 1, -1, -1,     1, 0.5, 0,  // Index: 19
-                // Face F       // White
-                -1,  1, -1,     1, 1, 1,    // Index: 20
-                -1,  1,  1,     1, 1, 1,    // Index: 21
-                 1,  1,  1,     1, 1, 1,    // Index: 22
-                 1,  1, -1,     1, 1, 1     // Index: 23
-            ];
-        
-            var cube_indices = [
-                0, 1, 2,     0, 2, 3,     // Face A
-                4, 5, 6,     4, 6, 7,     // Face B
-                8, 9, 10,    8, 10, 11,   // Face C
-                12, 13, 14,  12, 14, 15,  // Face D
-                16, 17, 18,  16, 18, 19,  // Face E
-                20, 21, 22,  20, 22, 23,  // Face F     
-            ];
-        
-            var cube_vertexShaderSource = `
-                attribute vec3 aPosition;
-                attribute vec3 aColor;
-                varying vec3 vColor;
-                uniform mat4 uModel;
-                uniform mat4 uView;
-                uniform mat4 uProjection;
-                void main() {
-                    gl_Position = uProjection * uView * uModel * (vec4(aPosition / 2.0, 1.0));
-                    vColor = aColor;
-                }
-            `;
-
-            var cube_fragmentShaderSource = `
-                precision mediump float;
-                varying vec3 vColor;
-                void main() {
-                    gl_FragColor = vec4(vColor, 1.0);
-                }
-            `;
-        gl.bindBuffer(gl.ARRAY_BUFFER, null);
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
-
-        var cube_vertexBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, cube_vertexBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(cube_vertices), gl.STATIC_DRAW);
-    
-        // Create a linked-list for storing the indices data
-        var cube_indexBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cube_indexBuffer);
-        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(cube_indices), gl.STATIC_DRAW);
-
-        var cube_vertexShader = gl.createShader(gl.VERTEX_SHADER);
-        gl.shaderSource(cube_vertexShader, cube_vertexShaderSource);
-        var cube_fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-        gl.shaderSource(cube_fragmentShader, cube_fragmentShaderSource);
-
-        gl.compileShader(cube_vertexShader);
-        gl.compileShader(cube_fragmentShader);
-        var cube_shaderProgram = gl.createProgram();
-        
-        gl.attachShader(cube_shaderProgram, cube_vertexShader);
-        gl.attachShader(cube_shaderProgram, cube_fragmentShader);
-        
-        // Link the two .o files, so together they can be a runnable program/context.
-        gl.linkProgram(cube_shaderProgram);
-
-        // Start using the context (analogy: start using the paints and the brushes)
-        gl.useProgram(cube_shaderProgram);
-
-        var cube_aPosition = gl.getAttribLocation(cube_shaderProgram, "aPosition");
-        gl.vertexAttribPointer(
-            cube_aPosition, 
-            3, 
-            gl.FLOAT, 
-            false, 
-            6 * Float32Array.BYTES_PER_ELEMENT, 
-            0
-        );
-        gl.enableVertexAttribArray(cube_aPosition);
-        var cube_aColor = gl.getAttribLocation(cube_shaderProgram, "aColor");
-        gl.vertexAttribPointer(
-            cube_aColor, 
-            3, 
-            gl.FLOAT, 
-            false, 
-            6 * Float32Array.BYTES_PER_ELEMENT, 
-            3 * Float32Array.BYTES_PER_ELEMENT
-        );
-        gl.enableVertexAttribArray(cube_aColor);
-
-        var cube_uModel = gl.getUniformLocation(cube_shaderProgram, "uModel");
-        var cube_uView = gl.getUniformLocation(cube_shaderProgram, "uView");
-        var cube_uProjection = gl.getUniformLocation(cube_shaderProgram, "uProjection");
-
-        // Set the projection matrix in the vertex shader
-        var cube_projection = glMatrix.mat4.create();
-        glMatrix.mat4.perspective(
-            cube_projection,
-            Math.PI / 3,
-            1,
-            0.5,
-            10
-        );
-        gl.uniformMatrix4fv(cube_uProjection, false, cube_projection);
-
-        // Set the view matrix in the vertex shader
-        var cube_view = glMatrix.mat4.create();
-        glMatrix.mat4.lookAt(
-            cube_view,
-            [0, 0, 3],
-            [0, 0, 0],
-            [0, 1, 0]
-        );
-        gl.uniformMatrix4fv(cube_uView, false, cube_view);
-        var model3 = glMatrix.mat4.create();
-            // Define a rotation matrix about x axis and store it to the model matrix
+            prepare_cube();
+            create_program();
+            var model3 = glMatrix.mat4.create();
             glMatrix.mat4.rotate(model3, model3, 0, [1, 0, 0]);
-            // Define a rotation matrix about y axis and store it to the model matrix
             glMatrix.mat4.rotate(model3, model3, 0, [0, 1, 0]);
-            // Define a translation matrix and store it to the model matrix
             glMatrix.mat4.translate(model3, model3, [0, 0, 0]);
-            // Set the model matrix in the vertex shader
-            gl.uniformMatrix4fv(cube_uModel, false, model3);
-            // Reset the frame buffer
+            gl.uniformMatrix4fv(uModel, false, model3);
+            var normalModel3 = glMatrix.mat3.create();
+            glMatrix.mat3.normalFromMat4(normalModel3, model3);
+            gl.uniformMatrix3fv(uNormalModel, false, normalModel3);
             gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
-        
+
+            prepare_plane();
+            create_program();
+            var model4 = glMatrix.mat4.create();
+            glMatrix.mat4.rotate(model4, model4, -1, [1, 0, 0]);
+            glMatrix.mat4.rotate(model4, model4, 0, [0, 1, 0]);
+            glMatrix.mat4.translate(model4, model4, [-3, 0, 0]);
+            gl.uniformMatrix4fv(uModel, false, model4);
+            var normalModel4 = glMatrix.mat3.create();
+            glMatrix.mat3.normalFromMat4(normalModel4, model4);
+            gl.uniformMatrix3fv(uNormalModel, false, normalModel4);
+            gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
+            
+            var model2 = glMatrix.mat4.create();
+            glMatrix.mat4.rotate(model2, model2, 0, [1, 0, 0]);
+            glMatrix.mat4.rotate(model2, model2, 0, [0, 1, 0]);
+            glMatrix.mat4.translate(model2, model2, [3, 0, 0]);
+            gl.uniformMatrix4fv(uModel, false, model2);
+            var normalModel2 = glMatrix.mat3.create();
+            glMatrix.mat3.normalFromMat4(normalModel2, model2);
+            gl.uniformMatrix3fv(uNormalModel, false, normalModel2);
+            gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
+
     }
     requestAnimationFrame(render);
 }
