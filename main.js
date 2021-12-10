@@ -6753,7 +6753,6 @@ function main() {
         gl.uniform3fv(uLightConstant, [1.0, 0.5, 1.0]);   // orange light
         gl.uniform1f(uAmbientIntensity, 0.4) // light intensity: 40%
         uLightPosition = gl.getUniformLocation(shaderProgram, "uLightPosition");
-        gl.uniform3fv(uLightPosition, [1.00, 1.00, 1.00]);
         uNormalModel = gl.getUniformLocation(shaderProgram, "uNormalModel");
         uViewerPosition = gl.getUniformLocation(shaderProgram, "uViewerPosition");
         gl.uniform3fv(uViewerPosition, camera);
@@ -6768,8 +6767,6 @@ function main() {
         if (event.key == 'space')
             changeControl();
     }
-
-    var cubePosition;
 
     function render() {
             gl.enable(gl.DEPTH_TEST);
@@ -6806,6 +6803,9 @@ function main() {
             glMatrix.mat4.rotate(model3, model3, 0, [1, 0, 0]);
             glMatrix.mat4.rotate(model3, model3, 0, [0, 1, 0]);
             glMatrix.mat4.translate(model3, model3, [0, 0, 0]);
+            var getTranslate = glMatrix.vec3.create();
+            getTranslate = glMatrix.mat4.getTranslation(getTranslate, model3);
+            gl.uniform3fv(uLightPosition, getTranslate);
             gl.uniformMatrix4fv(uModel, false, model3);
             var normalModel3 = glMatrix.mat3.create();
             glMatrix.mat3.normalFromMat4(normalModel3, model3);
